@@ -1,166 +1,130 @@
-import speech_recognition as sr
-import webbrowser
-import pyttsx3
-import musicLibrary
-import requests
-from openai import OpenAI
-
-# dotenv support (optional)
+"""Main file for the Jarvis project"""
 import os
-from gtts import gTTS
+from os import PathLike
+from time import time
+import asyncio
+from typing import Union
+
+from dotenv import load_dotenv
+import openai
+from deepgram import Deepgram
 import pygame
-import os
+from pygame import mixer
+import elevenlabs
 
-# pip install pocketsphinx
+from record import speech_to_text
 
-recognizer = sr.Recognizer()
-engine = pyttsx3.init() 
-# load environment variables from .env if python-dotenv is installed
-try:
-    from dotenv import load_dotenv
-    load_dotenv()
-except ImportError:
-    pass
+# Load API keys
+load_dotenv()
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+DEEPGRAM_API_KEY = os.getenv("DEEPGRAM_API_KEY")
+elevenlabs.set_api_key(os.getenv("ELEVENLABS_API_KEY"))
 
-# API key used by OpenAI. Prefer to set OPENAI_API_KEY in your environment
-API_KEY = os.getenv("OPENAI_API_KEY") or ""
+# Initialize APIs
+gpt_client = openai.Client(api_key=OPENAI_API_KEY)
+deepgram = Deepgram(DEEPGRAM_API_KEY)
+# mixer is a pygame module for playing audio
+mixer.init()
 
-# News API key (can be same as above or different)
-newsapi = os.getenv("NEWSAPI_KEY") or API_KEY
+# Change the context if you want to change Jarvis' personality
+context = "You are Jarvis, Alex's human assistant. You are witty and full of personality. Your answers should be limited to 1-2 short sentences."
+conversation = {"Conversation": []}
+RECORDING_PATH = "audio/recording.wav"
 
-if not API_KEY:
-    print("Warning: OPENAI_API_KEY is not set. AI features will fail.")
 
-
-def speak_old(text):
-    engine.say(text)
-    engine.runAndWait()
-
-def speak(text):
-    tts = gTTS(text)
-    tts.save('temp.mp3') 
-
-    # Initialize Pygame mixer
-    pygame.mixer.init()
-
-    # Load the MP3 file
-    pygame.mixer.music.load('temp.mp3')
-
-    # Play the MP3 file
-    pygame.mixer.music.play()
-
-    # Keep the program running until the music stops playing
-    while pygame.mixer.music.get_busy():
-        pygame.time.Clock().tick(10)
-    
-    pygame.mixer.music.unload()
-    os.remove("temp.mp3") 
-
-def aiProcess(command):
-    client = OpenAI(api_key=API_KEY)
-    
-
-    completion = client.chat.completions.create(
-    model="gpt-3.5-turbo",
-    messages=[
-        {"role": "system", "content": "You are a virtual assistant named jarvis skilled in general tasks like Alexa and Google Cloud. Give short responses please"},
-        {"role": "user", "content": command}
-    ]
-    )
-
-    return completion.choices[0].message.content
-
-def processCommand(c: str):
-    """Handle a single textual command from the user.
-
-    Supported phrases:
-      - "open google", "open facebook", "open youtube", "open linkedin"
-      - "play <song>" : opens a YouTube link from musicLibrary.music
-      - any string containing "news" : fetches headlines from NewsAPI
-      - anything else is forwarded to OpenAI via :func:`aiProcess`
+def request_gpt(prompt: str) -> str:
     """
+    Send a prompt to the GPT-3 API and return the response.
 
-    text = c.lower()
+    Args:
+        - state: The current state of the app.
+        - prompt: The prompt to send to the API.
 
-    if "open google" in text:
-        webbrowser.open("https://google.com")
-
-    elif "open facebook" in text:
-        webbrowser.open("https://facebook.com")
-
-    elif "open youtube" in text:
-        webbrowser.open("https://youtube.com")
-
-    elif "open linkedin" in text:
-        webbrowser.open("https://linkedin.com")
-
-    elif text.startswith("play"):
-        parts = text.split()
-        if len(parts) < 2:
-            speak("Please tell me which song to play.")
-            return
-        song = parts[1]
-        link = musicLibrary.music.get(song)
-        if link:
-            webbrowser.open(link)
-        else:
-            speak(f"I don't know the song {song}.")
-
-    elif "news" in text:
-        # use the shared API_KEY for the News API as well
-        try:
-            r = requests.get(
-                f"https://newsapi.org/v2/top-headlines?country=in&apiKey={newsapi}"
-            )
-            r.raise_for_status()
-        except Exception as exc:
-            speak("Sorry, I couldn't fetch the news right now.")
-            print("News API error", exc)
-            return
-
-        data = r.json()
-        articles = data.get('articles', [])
-        for article in articles:
-            speak(article.get('title', ''))
-
-    else:
-        # Let OpenAI handle the request
-        output = aiProcess(c)
-        speak(output)
+    Returns:
+        The response from the API.
+    """
+    response = gpt_client.chat.completions.create(
+        messages=[
+            {
+                "role": "user",
+                "content": f"{prompt}",
+            }
+        ],
+        model="gpt-3.5-turbo",
+    )
+    return response.choices[0].message.content
 
 
+async def transcribe(
+    file_name: Union[Union[str, bytes, PathLike[str], PathLike[bytes]], int]
+):
+    """
+    Transcribe audio using Deepgram API.
+
+    Args:
+        - file_name: The name of the file to transcribe.
+
+    Returns:
+        The response from the API.
+    """
+    with open(file_name, "rb") as audio:
+        source = {"buffer": audio, "mimetype": "audio/wav"}
+        response = await deepgram.transcription.prerecorded(source)
+        return response["results"]["channels"][0]["alternatives"][0]["words"]
 
 
-
-def run():
-    """Start the voice loop; this is the entry point when executed as a script."""
-    speak("Initializing Jarvis....")
-    while True:
-        # Listen for the wake word "Jarvis"
-        # obtain audio from the microphone
-        r = sr.Recognizer()
-
-        print("recognizing...")
-        try:
-            with sr.Microphone() as source:
-                print("Listening...")
-                audio = r.listen(source, timeout=2, phrase_time_limit=1)
-            word = r.recognize_google(audio)
-            if word.lower() == "jarvis":
-                speak("Ya")
-                # Listen for command
-                with sr.Microphone() as source:
-                    print("Jarvis Active...")
-                    audio = r.listen(source)
-                    command = r.recognize_google(audio)
-
-                    processCommand(command)
-
-        except Exception as e:
-            print("Error; {0}".format(e))
+def log(log: str):
+    """
+    Print and write to status.txt
+    """
+    print(log)
+    with open("status.txt", "w") as f:
+        f.write(log)
 
 
 if __name__ == "__main__":
-    run()
+    while True:
+        # Record audio
+        log("Listening...")
+        speech_to_text()
+        log("Done listening")
 
+        # Transcribe audio
+        current_time = time()
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        words = loop.run_until_complete(transcribe(RECORDING_PATH))
+        string_words = " ".join(
+            word_dict.get("word") for word_dict in words if "word" in word_dict
+        )
+        with open("conv.txt", "a") as f:
+            f.write(f"{string_words}\n")
+        transcription_time = time() - current_time
+        log(f"Finished transcribing in {transcription_time:.2f} seconds.")
 
+        # Get response from GPT-3
+        current_time = time()
+        context += f"\nAlex: {string_words}\nJarvis: "
+        response = request_gpt(context)
+        context += response
+        gpt_time = time() - current_time
+        log(f"Finished generating response in {gpt_time:.2f} seconds.")
+
+        # Convert response to audio
+        current_time = time()
+        audio = elevenlabs.generate(
+            text=response, voice="Adam", model="eleven_monolingual_v1"
+        )
+        elevenlabs.save(audio, "audio/response.wav")
+        audio_time = time() - current_time
+        log(f"Finished generating audio in {audio_time:.2f} seconds.")
+
+        # Play response
+        log("Speaking...")
+        sound = mixer.Sound("audio/response.wav")
+        # Add response as a new line to conv.txt
+        with open("conv.txt", "a") as f:
+            f.write(f"{response}\n")
+        sound.play()
+        pygame.time.wait(int(sound.get_length() * 1000))
+        print(f"\n --- USER: {string_words}\n --- JARVIS: {response}\n")

@@ -1,75 +1,97 @@
+# JARVIS
 
+<p align="center">
+  <img src="media/cqb_conv.png" alt="JARVIS helping me choose a firearm" width="100%"/>
+</p>
 
-# Jarvis AI
+Your own voice personal assistant: Voice to Text to LLM to Speech, displayed in a web interface.
 
-[![Public Link](https://img.shields.io/badge/View%20on-GitHub-blue?logo=github)](https://github.com/athrav138/JARVIS-AI)
+## How it works
 
-## 🚀 Project Overview
+1. :microphone: The user speaks into the microphone
+2. :keyboard: Voice is converted to text using <a href="https://deepgram.com/" target="_blank">Deepgram</a>
+3. :robot: Text is sent to <a href="https://openai.com/" target="_blank">OpenAI</a>'s GPT-3 API to generate a response
+4. :loudspeaker: Response is converted to speech using <a href="https://elevenlabs.io/" target="_blank">ElevenLabs</a>
+5. :loud_sound: Speech is played using <a href="https://www.pygame.org/wiki/GettingStarted" target="_blank">Pygame</a>
+6. :computer: Conversation is displayed in a webpage using <a href="https://github.com/Avaiga/taipy" target="_blank">Taipy</a>
 
-**Jarvis AI** is an interactive application that uses artificial intelligence to help songwriters, musicians, and creatives generate and refine original lyrics. Whether you're starting from scratch or polishing existing verses, Jarvis AI provides inspiration across genres and moods.
+## Video Demo
 
-## 🎯 Key Features
+<p align="center">
+  <a href="https://youtu.be/aIg4-eL9ATc" target="_blank">
+    <img src="media/git_thumb.png" alt="Youtube Devlog" width="50%"/>
+  </a>
+</p>
 
-- **Generate Lyrics**: Produce full verses, choruses, or entire songs in styles such as pop, rock, hip‑hop, and more.
-- **Style Matching**: Mimic the feel of a particular artist or genre by analyzing sample lyrics.
-- **Writer’s Block Relief**: Get fresh ideas for lines, rhymes, and song structure.
-- **Lyrics Refinement**: Improve rhyme schemes, word choice, and flow for existing text.
+## Requirements
 
-## 🛠️ Technologies Used
+**Python 3.8 - 3.11**
 
-- **Model**: GPT‑3 / transformers-based text generation
-- **Language**: Python 3.x
-- **Frameworks & Libraries**: Flask for web interface, `openai` or similar for AI calls, `requests`, etc.
+Make sure you have the following API keys:
+- <a href="https://developers.deepgram.com/docs/authenticating" target="_blank">Deepgram</a>
+- <a href="https://platform.openai.com/account/api-keys" target="_blank">OpenAI</a>
+- <a href="https://elevenlabs.io/docs/api-reference/text-to-speech" target="_blank">Elevenlabs</a>
 
-> _(Add or adjust the above list based on your actual implementation.)_
+## How to install
 
-## 🧩 Installation
+1. Clone the repository
 
-1. **Clone the repository**:
-   ```bash
-   git clone https://github.com/athrav138/JARVIS-AI.git
-   cd JARVIS-AI
-   ```
-2. **Install dependencies**:
-   ```bash
-   pip install -r requirements.txt
-   ```
-3. **Configure**:
-   - Add your API keys or model configuration to `config.py` or environment variables.
-   - (Provide any additional setup steps here.)
+```bash
+git clone https://github.com/AlexandreSajus/JARVIS.git
+```
 
-## ▶️ Usage
+2. Install the requirements
 
-### Run the application
+```bash
+pip install -r requirements.txt
+```
+
+3. Create a `.env` file in the root directory and add the following variables:
+
+```bash
+DEEPGRAM_API_KEY=XXX...XXX
+OPENAI_API_KEY=sk-XXX...XXX
+ELEVENLABS_API_KEY=XXX...XXX
+```
+
+## How to use
+
+1. Run `display.py` to start the web interface
+
+```bash
+python display.py
+```
+
+2. In another terminal, run `jarvis.py` to start the voice assistant
+
 ```bash
 python main.py
 ```
 
-### Access the interface
-- **Web**: Open `http://localhost:5000` in a browser.
-- **CLI**: Use the provided command‑line options (e.g., `python main.py --help`).
+- Once ready, both the web interface and the terminal will show `Listening...`
+- You can now speak into the microphone
+- Once you stop speaking, it will show `Stopped listening`
+- It will then start processing your request
+- Once the response is ready, it will show `Speaking...`
+- The response will be played and displayed in the web interface.
 
-(Include examples/screenshots of input prompts and generated output.)
+Here is an example:
 
-## 🤝 Contributing
-We welcome community contributions!
+```
+Listening...
+Done listening
+Finished transcribing in 1.21 seconds.
+Finished generating response in 0.72 seconds.
+Finished generating audio in 1.85 seconds.
+Speaking...
 
-1. Fork the repository.  
-2. Create a new branch: `git checkout -b feature/your-feature`.  
-3. Commit your changes with clear messages.  
-4. Push to your fork and open a pull request.  
+ --- USER: good morning jarvis
+ --- JARVIS: Good morning, Alex! How can I assist you today?
 
-Please follow the [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) and write tests where appropriate.
+Listening...
+...
+```
 
-## 📄 License
-This project is licensed under the **MIT License** – see the [LICENSE](LICENSE) file for details.
-
-## ⚠️ Disclaimer
-Jarvis AI is an experimental project. Generated lyrics may require editing and are not guaranteed to be production-ready.
-
-## 📬 Contact
-For questions or feedback, reach out to **athrav138** via GitHub or email: `suryavanshiathrav072@gmail.com`.
-
----
-
-_Thank you for checking out Jarvis AI!_
+<p align="center">
+  <img src="media/good_morning.png" alt="Saying good morning" width="80%"/>
+</p>
