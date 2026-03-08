@@ -5,18 +5,20 @@ from threading import Thread
 from taipy.gui import Gui, State, invoke_callback, get_state_id
 
 conversation = {"Conversation": []}
-state_id_list = []
-selected_row = [1]
-status = "Idle"
+state_id_list: list[str] = []
+selected_row: list[int] = [1]
+status: str = "Idle"
+
+
+from __future__ import annotations
+
+from taipy.gui import Gui, State, invoke_callback, get_state_id
+from typing import List
 
 
 def on_init(state: State) -> None:
-    """
-    On app initialization, get the state (user) ID
-    so that we know which app to update.
-    """
-    state_id = get_state_id(state)
-    state_id_list.append(state_id)
+    """Record the state ID so the background thread can update it."""
+    state_id_list.append(get_state_id(state))
 
 
 def client_handler(gui: Gui, state_id_list: list) -> None:
@@ -40,11 +42,18 @@ def update_conv(state: State) -> None:
     Args:
         - state: The current state of the app.
     """
-    with open("status.txt", "r") as f:
-        status = f.read()
-    state.status = status
-    with open("conv.txt", "r") as f:
-        conv = f.read()
+    # read status/conv, ignoring missing files
+    try:
+        with open("status.txt", "r", encoding="utf-8") as f:
+            state.status = f.read()
+    except FileNotFoundError:
+        state.status = "(no status)"
+
+    try:
+        with open("conv.txt", "r", encoding="utf-8") as f:
+            conv = f.read()
+    except FileNotFoundError:
+        conv = ""
     conversation["Conversation"] = conv.split("\n")
     if conversation == state.conversation:
         return

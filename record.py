@@ -5,91 +5,88 @@ import time
 import wave
 from pathlib import Path
 
-from rhasspysilence import WebRtcVadRecorder, VoiceCommand, VoiceCommandResult
+from __future__ import annotations
+
+"""Utility for recording audio from a microphone until silence is detected."""
+
+import io
+import wave
+import typing
+import time
+from pathlib import Path
+
+from rhasspysilence import WebRtcVadRecorder
 import pyaudio
 
-pa = pyaudio.PyAudio()
+
+def _buffer_to_wav(buffer: bytes, rate: int = 16000) -> bytes:
+    """Wrap a raw PCM buffer in a WAV container.
+
+    Args:
+        buffer: raw audio bytes (16‑bit PCM, mono).
+        rate: sampling rate.
+
+    Returns:
+        A bytes object containing a valid WAV file.
+    """
+
+    width = 2  # 16 bits
+    channels = 1
+
+    with io.BytesIO() as wav_buffer:
+        wav_file: wave.Wave_write = wave.open(wav_buffer, mode="wb")
+        with wav_file:
+            wav_file.setframerate(rate)
+            wav_file.setsampwidth(width)
+            wav_file.setnchannels(channels)
+            wav_file.writeframesraw(buffer)
+
+        return wav_buffer.getvalue()
 
 
-def speech_to_text() -> None:
+def speech_to_text(output_path: str | Path = "audio/recording.wav") -> Path:
+    """Record from the default microphone until silence is detected.
+
+    The recording is saved as a WAV file at ``output_path``. The directory is
+    created if necessary.
+
+    Returns:
+        Path to the written WAV file.
     """
-    Records audio until silence is detected
-    Saves audio to audio/recording.wav
-    """
-    recorder = WebRtcVadRecorder(
-        vad_mode=3,
-        silence_seconds=4,
-    )
+
+    output_path = Path(output_path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    recorder = WebRtcVadRecorder(vad_mode=3, silence_seconds=4)
     recorder.start()
-    # file directory
-    wav_sink = "audio/"
-    # file name
-    wav_filename = "recording"
-    if wav_sink:
-        wav_sink_path = Path(wav_sink)
-        if wav_sink_path.is_dir():
-            # Directory to write WAV files
-            wav_dir = wav_sink_path
-        else:
-            # Single WAV file to write
-            wav_sink = open(wav_sink, "wb")
-    voice_command: typing.Optional[VoiceCommand] = None
-    audio_source = pa.open(
+
+    pa = pyaudio.PyAudio()
+    stream = pa.open(
         rate=16000,
         format=pyaudio.paInt16,
         channels=1,
         input=True,
         frames_per_buffer=960,
     )
-    audio_source.start_stream()
-
-    def buffer_to_wav(buffer: bytes) -> bytes:
-        """Wraps a buffer of raw audio data in a WAV"""
-        rate = int(16000)
-        width = int(2)
-        channels = int(1)
-
-        with io.BytesIO() as wav_buffer:
-            wav_file: wave.Wave_write = wave.open(wav_buffer, mode="wb")
-            with wav_file:
-                wav_file.setframerate(rate)
-                wav_file.setsampwidth(width)
-                wav_file.setnchannels(channels)
-                wav_file.writeframesraw(buffer)
-
-            return wav_buffer.getvalue()
+    stream.start_stream()
 
     try:
-        chunk = audio_source.read(960)
-        while chunk:
-            # Look for speech/silence
+        while True:
+            chunk = stream.read(960, exception_on_overflow=False)
             voice_command = recorder.process_chunk(chunk)
 
             if voice_command:
-                _ = voice_command.result == VoiceCommandResult.FAILURE
-                # Reset
+                # we got a result (speech end or failure)
                 audio_data = recorder.stop()
-                if wav_dir:
-                    # Write WAV to directory
-                    wav_path = (wav_dir / time.strftime(wav_filename)).with_suffix(
-                        ".wav"
-                    )
-                    wav_bytes = buffer_to_wav(audio_data)
-                    wav_path.write_bytes(wav_bytes)
-                    break
-                elif wav_sink:
-                    # Write to WAV file
-                    wav_bytes = core.buffer_to_wav(audio_data)
-                    wav_sink.write(wav_bytes)
-            # Next audio chunk
-            chunk = audio_source.read(960)
-
+                wav_bytes = _buffer_to_wav(audio_data)
+                output_path.write_bytes(wav_bytes)
+                return output_path
     finally:
-        try:
-            audio_source.close_stream()
-        except Exception:
-            pass
+        stream.stop_stream()
+        stream.close()
+        pa.terminate()
 
 
 if __name__ == "__main__":
-    SpeechToText()
+    print("Recording until silence, saving to audio/recording.wav")
+    speech_to_text()

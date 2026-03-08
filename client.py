@@ -1,22 +1,28 @@
-from openai import OpenAI
- 
-# pip install openai 
-# if you saved the key under a different environment variable name, you can do something like:
+"""Minimal example showing how to talk to the chat API.
+
+This file isn't used by the main application; it's just here as a
+reference when you're experimenting interactively.
+"""
+
 import os
+import sys
 
-# load your API key from an environment variable for security
-api_key = os.getenv("OPENAI_API_KEY")
-if not api_key:
-    raise RuntimeError("OPENAI_API_KEY environment variable not set")
+try:
+    import openai
+except ImportError:  # pragma: no cover - simple example
+    sys.exit("install openai (`pip install openai`)")
 
-client = OpenAI(api_key=api_key)
+if __name__ == "__main__":
+    api_key = os.getenv("OPENAI_API_KEY")
+    if not api_key:
+        sys.exit("OPENAI_API_KEY environment variable not set")
 
-completion = client.chat.completions.create(
-  model="gpt-3.5-turbo",
-  messages=[
-    {"role": "system", "content": "You are a virtual assistant named jarvis skilled in general tasks like Alexa and Google Cloud"},
-    {"role": "user", "content": "what is coding"}
-  ]
-)
-
-print(completion.choices[0].message.content)
+    openai.api_key = api_key
+    resp = openai.ChatCompletion.create(
+        model="gpt-3.5-turbo",
+        messages=[
+            {"role": "system", "content": "You are a virtual assistant named Jarvis."},
+            {"role": "user", "content": "What is coding?"},
+        ],
+    )
+    print(resp.choices[0].message["content"])

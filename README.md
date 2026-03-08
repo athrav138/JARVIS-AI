@@ -4,6 +4,8 @@
   <img src="media/cqb_conv.png" alt="JARVIS helping me choose a firearm" width="100%"/>
 </p>
 
+**A personal voice assistant project originally created by Atharv**
+
 Your own voice personal assistant: Voice to Text to LLM to Speech, displayed in a web interface.
 
 ## How it works
@@ -56,19 +58,19 @@ ELEVENLABS_API_KEY=XXX...XXX
 
 ## How to use
 
-1. Run `display.py` to start the web interface
+1. Run `display.py` to start the web interface (make sure you have Python 3.8–3.11 and the dependencies installed)
 
 ```bash
 python display.py
 ```
 
-2. In another terminal, run `jarvis.py` to start the voice assistant
+2. In another terminal, run `main.py` to start the voice assistant
 
 ```bash
 python main.py
 ```
 
-- Once ready, both the web interface and the terminal will show `Listening...`
+- Once ready, both the web interface and the terminal will show `Listening...` (the assistant may take a second to initialise the models)
 - You can now speak into the microphone
 - Once you stop speaking, it will show `Stopped listening`
 - It will then start processing your request
